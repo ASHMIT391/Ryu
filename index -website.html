@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuaVault — Practice Questions & Notes</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+<!-- Stripe -->
+<script src="https://js.stripe.com/v3/"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #1a1a24;
+  --border: #2a2a3a;
+  --accent: #7c6af7;
+  --accent2: #f7c06a;
+  --accent3: #6af7b8;
+  --text: #e8e8f0;
+  --muted: #6b6b85;
+  --danger: #f76a6a;
+  --card-glow: rgba(124,106,247,0.08);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRID BG ── */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(124,106,247,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,106,247,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── NAV ── */
+nav {
+  position:sticky; top:0; z-index:100;
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 16px 48px;
+  background: rgba(10,10,15,.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family:'JetBrains Mono', monospace;
+  font-size:1.3rem; font-weight:700;
+  color: var(--accent);
+  letter-spacing:-1px;
+}
+.logo span { color: var(--accent2); }
+
+.nav-links { display:flex; gap:12px; align-items:center; }
+
+.btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family:'Syne', sans-serif;
+  font-size:.85rem;
+  font-weight:600;
+  transition: all .2s;
+  text-decoration:none;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+.btn-ghost:hover { color:var(--text); border-color:var(--accent); }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#9180ff; transform:translateY(-1px); box-shadow:0 4px 20px rgba(124,106,247,.4); }
+.btn-gold { background:var(--accent2); color:#0a0a0f; }
+.btn-gold:hover { background:#ffd080; transform:translateY(-1px); }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-danger:hover { opacity:.85; }
+.btn-green { background:var(--accent3); color:#0a0a0f; }
+.btn-green:hover { opacity:.85; }
+.btn-sm { padding:5px 12px; font-size:.78rem; }
+.btn-full { width:100%; justify-content:center; }
+
+/* ── PAGES ── */
+.page { display:none; min-height:100vh; position:relative; z-index:1; }
+.page.active { display:block; }
+
+/* ── HERO ── */
+.hero {
+  padding: 100px 48px 60px;
+  text-align:center;
+}
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background: rgba(124,106,247,.12);
+  border:1px solid rgba(124,106,247,.3);
+  color:var(--accent); padding:6px 16px; border-radius:999px;
+  font-family:'JetBrains Mono', monospace; font-size:.78rem;
+  margin-bottom:32px;
+}
+.hero-badge::before { content:'●'; font-size:.5rem; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight:800; line-height:1.1;
+  margin-bottom:20px;
+}
+.hero h1 em { font-style:normal; color:var(--accent2); }
+
+.hero p {
+  font-size:1.1rem; color:var(--muted);
+  max-width:500px; margin:0 auto 40px;
+  line-height:1.7;
+}
+
+.hero-cta { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+/* ── STATS ── */
+.stats {
+  display:flex; justify-content:center; gap:60px;
+  padding:40px 48px;
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  background: var(--surface);
+}
+.stat { text-align:center; }
+.stat-num { font-size:2rem; font-weight:800; color:var(--accent); font-family:'JetBrains Mono',monospace; }
+.stat-label { font-size:.8rem; color:var(--muted); margin-top:4px; }
+
+/* ── PRODUCTS GRID ── */
+.section { padding: 60px 48px; }
+.section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:40px;
+}
+.section-title { font-size:1.6rem; font-weight:800; }
+.section-title span { color:var(--accent); }
+
+.products-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap:24px;
+}
+
+.product-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  overflow:hidden;
+  transition: all .3s;
+  cursor:pointer;
+  position:relative;
+}
+.product-card::before {
+  content:'';
+  position:absolute; inset:0;
+  background: var(--card-glow);
+  opacity:0; transition:.3s;
+  border-radius:16px;
+}
+.product-card:hover { border-color:var(--accent); transform:translateY(-4px); box-shadow:0 12px 40px rgba(124,106,247,.15); }
+.product-card:hover::before { opacity:1; }
+
+.card-thumb {
+  height:140px;
+  background: linear-gradient(135deg, var(--surface2), #1a1530);
+  display:flex; align-items:center; justify-content:center;
+  position:relative; overflow:hidden;
+}
+.card-thumb-icon { font-size:3rem; }
+.card-type-badge {
+  position:absolute; top:12px; right:12px;
+  padding:4px 10px; border-radius:999px;
+  font-size:.7rem; font-weight:700; font-family:'JetBrains Mono',monospace;
+}
+.badge-notes { background:rgba(106,247,184,.15); color:var(--accent3); border:1px solid rgba(106,247,184,.3); }
+.badge-practice { background:rgba(247,192,106,.15); color:var(--accent2); border:1px solid rgba(247,192,106,.3); }
+.badge-bundle { background:rgba(124,106,247,.15); color:var(--accent); border:1px solid rgba(124,106,247,.3); }
+
+.card-body { padding:20px; }
+.card-title { font-size:1rem; font-weight:700; margin-bottom:8px; }
+.card-desc { font-size:.82rem; color:var(--muted); line-height:1.6; margin-bottom:16px; }
+.card-footer { display:flex; align-items:center; justify-content:space-between; }
+.card-price { font-size:1.3rem; font-weight:800; font-family:'JetBrains Mono',monospace; color:var(--accent2); }
+.card-price span { font-size:.75rem; color:var(--muted); font-weight:400; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
+  display:none; align-items:center; justify-content:center;
+  padding:20px;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  width:100%; max-width:500px;
+  max-height:90vh; overflow-y:auto;
+  padding:32px;
+  animation: modalIn .3s ease;
+}
+@keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(10px)} to{opacity:1;transform:none} }
+.modal-title { font-size:1.3rem; font-weight:800; margin-bottom:8px; }
+.modal-close {
+  position:absolute; top:16px; right:16px;
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--muted); width:32px; height:32px; border-radius:8px;
+  cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;
+}
+.modal-close:hover { color:var(--text); }
+
+/* ── FORM ── */
+.form-group { margin-bottom:18px; }
+.form-label { font-size:.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:8px; font-family:'JetBrains Mono',monospace; }
+.form-input, .form-select, .form-textarea {
+  width:100%; padding:10px 14px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:10px; color:var(--text);
+  font-family:'Syne',sans-serif; font-size:.9rem;
+  transition:.2s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline:none; border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(124,106,247,.12);
+}
+.form-textarea { resize:vertical; min-height:80px; }
+.form-select option { background:var(--surface2); }
+
+.upload-zone {
+  border:2px dashed var(--border);
+  border-radius:12px; padding:30px; text-align:center;
+  cursor:pointer; transition:.2s;
+  background:var(--surface2);
+}
+.upload-zone:hover { border-color:var(--accent); background:rgba(124,106,247,.05); }
+.upload-zone.dragging { border-color:var(--accent); background:rgba(124,106,247,.1); }
+.upload-icon { font-size:2rem; margin-bottom:8px; }
+.upload-text { font-size:.85rem; color:var(--muted); }
+.upload-text strong { color:var(--accent); }
+
+.progress-bar { height:6px; background:var(--surface2); border-radius:99px; overflow:hidden; margin-top:12px; display:none; }
+.progress-fill { height:100%; background:linear-gradient(90deg, var(--accent), var(--accent3)); border-radius:99px; width:0; transition:width .3s; }
+
+/* ── TOAST ── */
+.toast-container { position:fixed; bottom:24px; right:24px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  padding:12px 20px; border-radius:10px;
+  font-size:.85rem; font-weight:600;
+  animation: toastIn .3s ease;
+  max-width:320px;
+}
+@keyframes toastIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none} }
+.toast-success { background:rgba(106,247,184,.15); border:1px solid rgba(106,247,184,.3); color:var(--accent3); }
+.toast-error { background:rgba(247,106,106,.15); border:1px solid rgba(247,106,106,.3); color:var(--danger); }
+.toast-info { background:rgba(124,106,247,.15); border:1px solid rgba(124,106,247,.3); color:var(--accent); }
+
+/* ── ADMIN PANEL ── */
+.admin-layout {
+  display:grid; grid-template-columns:240px 1fr;
+  min-height:calc(100vh - 65px);
+}
+.admin-sidebar {
+  background:var(--surface); border-right:1px solid var(--border);
+  padding:24px 0;
+}
+.admin-sidebar h3 {
+  font-size:.7rem; font-weight:700; color:var(--muted);
+  padding:0 24px 12px; letter-spacing:.1em; text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;
+}
+.sidebar-link {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 24px; cursor:pointer;
+  color:var(--muted); font-size:.88rem; font-weight:600;
+  transition:.2s; border-left:3px solid transparent;
+}
+.sidebar-link:hover { color:var(--text); background:var(--surface2); }
+.sidebar-link.active { color:var(--accent); border-left-color:var(--accent); background:rgba(124,106,247,.07); }
+.sidebar-icon { width:18px; text-align:center; }
+
+.admin-content { padding:32px; }
+.admin-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
+.admin-title { font-size:1.4rem; font-weight:800; }
+
+.admin-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
+.admin-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:20px;
+}
+.admin-card-label { font-size:.75rem; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-bottom:8px; }
+.admin-card-value { font-size:1.8rem; font-weight:800; font-family:'JetBrains Mono',monospace; color:var(--accent); }
+
+.data-table { width:100%; border-collapse:collapse; }
+.data-table th {
+  text-align:left; font-size:.75rem; font-weight:700;
+  color:var(--muted); font-family:'JetBrains Mono',monospace;
+  padding:10px 16px; border-bottom:1px solid var(--border);
+  text-transform:uppercase; letter-spacing:.05em;
+}
+.data-table td { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.04); font-size:.88rem; vertical-align:middle; }
+.data-table tr:hover td { background:rgba(255,255,255,.02); }
+
+/* ── CHECKOUT ── */
+.checkout-split {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:32px; max-width:900px; margin:0 auto; padding:48px;
+}
+.checkout-summary {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:28px; height:fit-content;
+}
+.checkout-form { }
+.stripe-element {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px;
+  transition:.2s;
+}
+.stripe-element.StripeElement--focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,106,247,.12); }
+
+/* ── LIBRARY (USER PURCHASES) ── */
+.library-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:20px;
+}
+.library-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:20px;
+  display:flex; flex-direction:column; gap:12px;
+  transition:.2s;
+}
+.library-card:hover { border-color:var(--accent3); }
+.library-card-title { font-size:1rem; font-weight:700; }
+.library-card-meta { font-size:.8rem; color:var(--muted); display:flex; gap:12px; }
+
+/* ── AUTH ── */
+.auth-container {
+  display:flex; align-items:center; justify-content:center;
+  min-height:calc(100vh - 65px); padding:40px;
+}
+.auth-box {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px; padding:40px;
+  width:100%; max-width:400px;
+}
+.auth-title { font-size:1.5rem; font-weight:800; margin-bottom:6px; }
+.auth-sub { font-size:.85rem; color:var(--muted); margin-bottom:28px; }
+.auth-divider {
+  display:flex; align-items:center; gap:12px;
+  margin:16px 0; color:var(--muted); font-size:.8rem;
+}
+.auth-divider::before, .auth-divider::after {
+  content:''; flex:1; height:1px; background:var(--border);
+}
+
+.tabs { display:flex; gap:4px; background:var(--surface2); border-radius:10px; padding:4px; margin-bottom:24px; }
+.tab-btn {
+  flex:1; padding:8px; border-radius:7px; border:none;
+  background:transparent; color:var(--muted);
+  font-family:'Syne',sans-serif; font-weight:600; font-size:.85rem;
+  cursor:pointer; transition:.2s;
+}
+.tab-btn.active { background:var(--accent); color:#fff; }
+
+/* ── LOADING ── */
+.spinner {
+  width:20px; height:20px; border:2px solid rgba(255,255,255,.2);
+  border-top-color:currentColor; border-radius:50%;
+  animation:spin .6s linear infinite; display:inline-block;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px) {
+  nav { padding:14px 20px; }
+  .hero { padding:60px 20px 40px; }
+  .section { padding:40px 20px; }
+  .stats { gap:30px; padding:30px 20px; flex-wrap:wrap; }
+  .admin-layout { grid-template-columns:1fr; }
+  .admin-sidebar { display:none; }
+  .checkout-split { grid-template-columns:1fr; padding:20px; }
+  .admin-cards { grid-template-columns:1fr; }
+}
+
+/* ── PRODUCT DETAIL ── */
+.detail-hero {
+  padding:60px 48px 40px;
+  display:grid; grid-template-columns:1fr 360px;
+  gap:48px; align-items:start;
+}
+.detail-badge { display:inline-block; margin-bottom:16px; }
+.detail-title { font-size:2.2rem; font-weight:800; margin-bottom:16px; line-height:1.2; }
+.detail-desc { color:var(--muted); line-height:1.8; margin-bottom:24px; }
+.detail-features { list-style:none; display:flex; flex-direction:column; gap:8px; margin-bottom:28px; }
+.detail-features li { display:flex; align-items:center; gap:8px; font-size:.9rem; }
+.detail-features li::before { content:'✓'; color:var(--accent3); font-weight:700; }
+
+.detail-buy-box {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px; padding:28px; position:sticky; top:90px;
+}
+.detail-price { font-size:2.5rem; font-weight:800; font-family:'JetBrains Mono',monospace; color:var(--accent2); margin-bottom:6px; }
+.detail-price-sub { font-size:.82rem; color:var(--muted); margin-bottom:24px; }
+
+/* config section */
+.config-section {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:28px; margin:20px 48px;
+}
+.config-title { font-size:1rem; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.config-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.config-note { font-size:.78rem; color:var(--muted); margin-top:12px; font-family:'JetBrains Mono',monospace; line-height:1.6; }
+
+.empty-state {
+  text-align:center; padding:60px 20px; color:var(--muted);
+}
+.empty-icon { font-size:3rem; margin-bottom:12px; }
+.empty-text { font-size:.9rem; }
+</style>
+</head>
+<body>
+
+<!-- ── TOAST CONTAINER ── -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="logo">Lua<span>Vault</span></div>
+  <div class="nav-links">
+    <button class="btn btn-ghost" onclick="showPage('home')">Shop</button>
+    <button class="btn btn-ghost" id="libraryNavBtn" onclick="showPage('library')" style="display:none">My Library</button>
+    <button class="btn btn-ghost" id="adminNavBtn" onclick="showPage('admin')" style="display:none">⚙ Admin</button>
+    <button class="btn btn-ghost" id="loginBtn" onclick="showPage('auth')">Login</button>
+    <button class="btn btn-primary" id="logoutBtn" onclick="handleLogout()" style="display:none">Logout</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════
+     PAGE: SETUP / CONFIG
+══════════════════════════════════ -->
+<div class="page active" id="page-setup">
+  <div style="min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:40px;">
+    <div style="max-width:620px;width:100%;">
+      <div style="text-align:center;margin-bottom:40px;">
+        <div style="font-size:3rem;margin-bottom:16px;">🔥</div>
+        <h1 style="font-size:2rem;font-weight:800;margin-bottom:8px;">Connect Your Services</h1>
+        <p style="color:var(--muted);font-size:.9rem;">Enter your Firebase and Stripe keys to power your marketplace. These are stored only in your browser.</p>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:20px;color:var(--accent);font-family:'JetBrains Mono',monospace;">🔥 Firebase Config</h3>
+        <div class="config-grid">
+          <div class="form-group">
+            <label class="form-label">API Key</label>
+            <input class="form-input" id="cfg_apiKey" placeholder="AIzaSy...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Auth Domain</label>
+            <input class="form-input" id="cfg_authDomain" placeholder="app.firebaseapp.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project ID</label>
+            <input class="form-input" id="cfg_projectId" placeholder="my-project">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Storage Bucket</label>
+            <input class="form-input" id="cfg_storageBucket" placeholder="my-project.appspot.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Messaging Sender ID</label>
+            <input class="form-input" id="cfg_messagingSenderId" placeholder="123456789">
+          </div>
+          <div class="form-group">
+            <label class="form-label">App ID</label>
+            <input class="form-input" id="cfg_appId" placeholder="1:123:web:abc">
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin:24px 0;"></div>
+
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:20px;color:var(--accent2);font-family:'JetBrains Mono',monospace;">💳 Stripe Config</h3>
+        <div class="form-group">
+          <label class="form-label">Stripe Publishable Key</label>
+          <input class="form-input" id="cfg_stripeKey" placeholder="pk_test_...">
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin:24px 0;"></div>
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:20px;color:var(--accent3);font-family:'JetBrains Mono',monospace;">🔐 Admin Setup</h3>
+        <div class="form-group">
+          <label class="form-label">Admin Email (your email for admin access)</label>
+          <input class="form-input" id="cfg_adminEmail" placeholder="admin@youremail.com">
+        </div>
+
+        <p class="config-note">💡 Get Firebase config from Firebase Console → Project Settings → Your Apps<br>
+        Get Stripe key from Stripe Dashboard → Developers → API Keys (use test keys first)</p>
+
+        <button class="btn btn-primary btn-full" style="margin-top:20px;" onclick="saveConfig()">
+          🚀 Launch My Store
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     PAGE: HOME / SHOP
+══════════════════════════════════ -->
+<div class="page" id="page-home">
+  <div class="hero">
+    <div class="hero-badge">Live Marketplace</div>
+    <h1>Master <em>Lua</em> with<br>Expert Resources</h1>
+    <p>Practice questions, detailed notes, and bundles crafted to take you from beginner to advanced.</p>
+    <div class="hero-cta">
+      <button class="btn btn-primary" onclick="document.querySelector('.section').scrollIntoView({behavior:'smooth'})">Browse Resources →</button>
+      <button class="btn btn-ghost" onclick="showPage('auth')">Sign In</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num" id="statProducts">0</div>
+      <div class="stat-label">Resources Available</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="statSales">0</div>
+      <div class="stat-label">Total Sales</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">PDF</div>
+      <div class="stat-label">Instant Download</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">All <span>Resources</span></h2>
+    </div>
+    <div class="products-grid" id="productsGrid">
+      <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted);">
+        <div class="spinner" style="margin:0 auto 12px;"></div>
+        <p>Loading resources...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     PAGE: PRODUCT DETAIL
+══════════════════════════════════ -->
+<div class="page" id="page-detail">
+  <div class="detail-hero" id="detailContent">
+    <!-- filled dynamically -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     PAGE: CHECKOUT
+══════════════════════════════════ -->
+<div class="page" id="page-checkout">
+  <div class="checkout-split">
+    <div>
+      <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:24px;">Complete Purchase</h2>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="checkoutEmail" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Card Details</label>
+        <div class="stripe-element" id="cardElement">
+          <!-- Stripe mounts here -->
+        </div>
+      </div>
+      <p id="cardError" style="color:var(--danger);font-size:.8rem;margin-top:8px;"></p>
+      <button class="btn btn-gold btn-full" style="margin-top:24px;" id="payBtn" onclick="handlePayment()">
+        💳 Pay Now
+      </button>
+      <p style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:12px;">
+        🔒 Secured by Stripe. Your card info never touches our servers.
+      </p>
+    </div>
+    <div>
+      <div class="checkout-summary" id="checkoutSummary">
+        <!-- filled dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     PAGE: LIBRARY
+══════════════════════════════════ -->
+<div class="page" id="page-library">
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">My <span>Library</span></h2>
+    </div>
+    <div class="library-grid" id="libraryGrid">
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-icon">📚</div>
+        <p class="empty-text">Your purchased resources will appear here</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     PAGE: AUTH
+══════════════════════════════════ -->
+<div class="page" id="page-auth">
+  <div class="auth-container">
+    <div class="auth-box">
+      <div class="tabs">
+        <button class="tab-btn active" id="loginTab" onclick="switchAuthTab('login')">Login</button>
+        <button class="tab-btn" id="signupTab" onclick="switchAuthTab('signup')">Sign Up</button>
+      </div>
+      <div id="authLoginForm">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="loginEmail" type="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" id="loginPassword" type="password" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="handleLogin()">Login →</button>
+      </div>
+      <div id="authSignupForm" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input class="form-input" id="signupName" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="signupEmail" type="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" id="signupPassword" type="password" placeholder="min 6 characters">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="handleSignup()">Create Account →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     PAGE: ADMIN
+══════════════════════════════════ -->
+<div class="page" id="page-admin">
+  <div class="admin-layout">
+    <div class="admin-sidebar">
+      <h3>Admin Panel</h3>
+      <div class="sidebar-link active" onclick="switchAdminTab('dashboard')" id="sidebarDashboard">
+        <span class="sidebar-icon">📊</span> Dashboard
+      </div>
+      <div class="sidebar-link" onclick="switchAdminTab('products')" id="sidebarProducts">
+        <span class="sidebar-icon">📦</span> Products
+      </div>
+      <div class="sidebar-link" onclick="switchAdminTab('upload')" id="sidebarUpload">
+        <span class="sidebar-icon">⬆</span> Upload New
+      </div>
+      <div class="sidebar-link" onclick="switchAdminTab('orders')" id="sidebarOrders">
+        <span class="sidebar-icon">💰</span> Orders
+      </div>
+    </div>
+
+    <div class="admin-content">
+      <!-- DASHBOARD TAB -->
+      <div id="adminDashboard">
+        <div class="admin-header">
+          <h2 class="admin-title">Dashboard</h2>
+        </div>
+        <div class="admin-cards">
+          <div class="admin-card">
+            <div class="admin-card-label">TOTAL REVENUE</div>
+            <div class="admin-card-value" id="dashRevenue">$0</div>
+          </div>
+          <div class="admin-card">
+            <div class="admin-card-label">TOTAL ORDERS</div>
+            <div class="admin-card-value" id="dashOrders">0</div>
+          </div>
+          <div class="admin-card">
+            <div class="admin-card-label">PRODUCTS</div>
+            <div class="admin-card-value" id="dashProducts">0</div>
+          </div>
+        </div>
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">Recent Orders</h3>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+          <table class="data-table">
+            <thead><tr><th>Customer</th><th>Product</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody id="recentOrdersTable">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px;">No orders yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PRODUCTS TAB -->
+      <div id="adminProducts" style="display:none">
+        <div class="admin-header">
+          <h2 class="admin-title">Products</h2>
+          <button class="btn btn-primary btn-sm" onclick="switchAdminTab('upload')">+ Add New</button>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+          <table class="data-table">
+            <thead><tr><th>Title</th><th>Type</th><th>Price</th><th>Sales</th><th>Actions</th></tr></thead>
+            <tbody id="adminProductsTable">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px;">No products yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- UPLOAD TAB -->
+      <div id="adminUpload" style="display:none">
+        <div class="admin-header">
+          <h2 class="admin-title">Upload New Resource</h2>
+        </div>
+        <div style="max-width:580px;">
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input class="form-input" id="uploadTitle" placeholder="e.g. Lua Tables & Metatables — 50 Practice Questions">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-textarea" id="uploadDesc" placeholder="What's included? Who is this for?"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <select class="form-select" id="uploadType">
+                <option value="practice">Practice Questions</option>
+                <option value="notes">Notes</option>
+                <option value="bundle">Bundle</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price (USD)</label>
+              <input class="form-input" id="uploadPrice" type="number" min="0.99" step="0.01" placeholder="4.99">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Features (one per line)</label>
+            <textarea class="form-textarea" id="uploadFeatures" placeholder="50 practice questions&#10;Detailed solutions&#10;Beginner to advanced"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">PDF File</label>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('pdfFileInput').click()">
+              <div class="upload-icon">📄</div>
+              <p class="upload-text"><strong>Click to select</strong> or drag & drop PDF</p>
+              <p class="upload-text" id="uploadFileName" style="margin-top:6px;color:var(--accent);"></p>
+            </div>
+            <input type="file" id="pdfFileInput" accept=".pdf" style="display:none" onchange="handleFileSelect(this)">
+            <div class="progress-bar" id="uploadProgress">
+              <div class="progress-fill" id="uploadProgressFill"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" id="uploadBtn" onclick="handleUpload()">
+            ⬆ Upload & Publish
+          </button>
+        </div>
+      </div>
+
+      <!-- ORDERS TAB -->
+      <div id="adminOrders" style="display:none">
+        <div class="admin-header">
+          <h2 class="admin-title">All Orders</h2>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+          <table class="data-table">
+            <thead><tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Amount</th><th>Date</th></tr></thead>
+            <tbody id="allOrdersTable">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px;">No orders yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     PRODUCT MODAL (Quick View)
+══════════════════════════════════ -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+let db, auth, storage, stripe, cardElement;
+let currentUser = null;
+let currentProduct = null;
+let products = [];
+let config = {};
+let ADMIN_EMAIL = '';
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+function init() {
+  const saved = localStorage.getItem('luavault_config');
+  if (saved) {
+    config = JSON.parse(saved);
+    ADMIN_EMAIL = config.adminEmail || '';
+    initFirebase();
+  } else {
+    showPage('setup');
+  }
+}
+
+function saveConfig() {
+  config = {
+    apiKey: v('cfg_apiKey'),
+    authDomain: v('cfg_authDomain'),
+    projectId: v('cfg_projectId'),
+    storageBucket: v('cfg_storageBucket'),
+    messagingSenderId: v('cfg_messagingSenderId'),
+    appId: v('cfg_appId'),
+    stripeKey: v('cfg_stripeKey'),
+    adminEmail: v('cfg_adminEmail'),
+  };
+  if (!config.apiKey || !config.projectId) { toast('Please fill Firebase API Key and Project ID', 'error'); return; }
+  ADMIN_EMAIL = config.adminEmail;
+  localStorage.setItem('luavault_config', JSON.stringify(config));
+  initFirebase();
+  toast('Configuration saved!', 'success');
+}
+
+function initFirebase() {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: config.apiKey,
+        authDomain: config.authDomain,
+        projectId: config.projectId,
+        storageBucket: config.storageBucket,
+        messagingSenderId: config.messagingSenderId,
+        appId: config.appId,
+      });
+    }
+    db = firebase.firestore();
+    auth = firebase.auth();
+    storage = firebase.storage();
+
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      updateNavForUser(user);
+      if (currentPage === 'home' || currentPage === 'setup') {
+        showPage('home');
+        loadProducts();
+      }
+    });
+
+    if (config.stripeKey) {
+      stripe = Stripe(config.stripeKey);
+    }
+
+    showPage('home');
+    loadProducts();
+  } catch(e) {
+    toast('Firebase init error: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════
+// PAGE ROUTING
+// ═══════════════════════════════════
+let currentPage = 'setup';
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  currentPage = page;
+  window.scrollTo(0,0);
+
+  if (page === 'library' && currentUser) loadLibrary();
+  if (page === 'admin') loadAdminData();
+  if (page === 'checkout') initStripe();
+}
+
+function updateNavForUser(user) {
+  el('loginBtn').style.display = user ? 'none' : 'block';
+  el('logoutBtn').style.display = user ? 'block' : 'none';
+  el('libraryNavBtn').style.display = user ? 'block' : 'none';
+  el('adminNavBtn').style.display = (user && user.email === ADMIN_EMAIL) ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════
+// PRODUCTS
+// ═══════════════════════════════════
+async function loadProducts() {
+  if (!db) return;
+  try {
+    const snap = await db.collection('products').orderBy('createdAt', 'desc').get();
+    products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderProducts(products);
+    el('statProducts').textContent = products.length;
+  } catch(e) {
+    console.error('load products:', e);
+    el('productsGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);">Could not load products. Check Firebase config.</div>';
+  }
+}
+
+function renderProducts(prods) {
+  const grid = el('productsGrid');
+  if (!prods.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div><p class="empty-text">No resources yet. Check back soon!</p></div>';
+    return;
+  }
+  const icons = { practice:'📝', notes:'📖', bundle:'🎁' };
+  grid.innerHTML = prods.map(p => `
+    <div class="product-card" onclick="openProductDetail('${p.id}')">
+      <div class="card-thumb">
+        <div class="card-thumb-icon">${icons[p.type] || '📄'}</div>
+        <span class="card-type-badge badge-${p.type}">${p.type}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(p.title)}</div>
+        <div class="card-desc">${esc(p.description || '').substring(0,100)}${(p.description||'').length>100?'…':''}</div>
+        <div class="card-footer">
+          <div class="card-price">$${parseFloat(p.price).toFixed(2)} <span>USD</span></div>
+          <button class="btn btn-gold btn-sm" onclick="event.stopPropagation();startCheckout('${p.id}')">Buy →</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openProductDetail(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  currentProduct = p;
+  const icons = { practice:'📝', notes:'📖', bundle:'🎁' };
+  const features = (p.features || '').split('\n').filter(Boolean);
+  el('detailContent').innerHTML = `
+    <div>
+      <span class="detail-badge card-type-badge badge-${p.type}">${p.type}</span>
+      <h1 class="detail-title">${esc(p.title)}</h1>
+      <p class="detail-desc">${esc(p.description || '')}</p>
+      ${features.length ? `<ul class="detail-features">${features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>` : ''}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-gold" onclick="startCheckout('${p.id}')">Buy for $${parseFloat(p.price).toFixed(2)}</button>
+        <button class="btn btn-ghost" onclick="showPage('home')">← Back</button>
+      </div>
+    </div>
+    <div class="detail-buy-box">
+      <div style="font-size:3rem;text-align:center;margin-bottom:16px;">${icons[p.type]||'📄'}</div>
+      <div class="detail-price">$${parseFloat(p.price).toFixed(2)}</div>
+      <div class="detail-price-sub">One-time purchase • Instant PDF download</div>
+      <button class="btn btn-gold btn-full" onclick="startCheckout('${p.id}')">Buy Now →</button>
+      <div style="margin-top:16px;font-size:.8rem;color:var(--muted);text-align:center;">🔒 Secure checkout via Stripe</div>
+    </div>
+  `;
+  showPage('detail');
+}
+
+// ═══════════════════════════════════
+// CHECKOUT & STRIPE
+// ═══════════════════════════════════
+function startCheckout(productId) {
+  if (!currentUser) { showPage('auth'); toast('Please log in to purchase', 'info'); return; }
+  if (!stripe) { toast('Stripe not configured. Add your Stripe key in setup.', 'error'); return; }
+  currentProduct = products.find(p => p.id === productId);
+  if (!currentProduct) return;
+
+  el('checkoutEmail').value = currentUser.email || '';
+  el('checkoutSummary').innerHTML = `
+    <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:20px;">Order Summary</h3>
+    <div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface2);border-radius:12px;margin-bottom:20px;">
+      <div style="font-size:2rem;">${{practice:'📝',notes:'📖',bundle:'🎁'}[currentProduct.type]||'📄'}</div>
+      <div>
+        <div style="font-weight:700;font-size:.9rem;">${esc(currentProduct.title)}</div>
+        <div style="font-size:.8rem;color:var(--muted);">PDF Download</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.9rem;color:var(--muted);margin-bottom:8px;"><span>Subtotal</span><span>$${parseFloat(currentProduct.price).toFixed(2)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:800;padding-top:12px;border-top:1px solid var(--border);">
+      <span>Total</span><span style="color:var(--accent2)">$${parseFloat(currentProduct.price).toFixed(2)}</span>
+    </div>
+  `;
+  showPage('checkout');
+}
+
+function initStripe() {
+  if (!stripe) return;
+  const elements = stripe.elements({
+    appearance: {
+      theme: 'night',
+      variables: { colorPrimary: '#7c6af7', colorBackground: '#1a1a24', colorText: '#e8e8f0', fontFamily: 'Syne, sans-serif' }
+    }
+  });
+  cardElement = elements.create('card');
+  setTimeout(() => {
+    const mount = el('cardElement');
+    if (mount && !mount.hasChildNodes()) {
+      cardElement.mount('#cardElement');
+      cardElement.on('change', e => { el('cardError').textContent = e.error ? e.error.message : ''; });
+    }
+  }, 100);
+}
+
+async function handlePayment() {
+  if (!currentProduct || !currentUser) return;
+  const btn = el('payBtn');
+  btn.innerHTML = '<span class="spinner"></span> Processing...';
+  btn.disabled = true;
+
+  try {
+    // In production: call your backend to create a PaymentIntent
+    // Here we simulate for demo (you need a backend for real payments)
+    // For testing with Stripe test keys, use card 4242 4242 4242 4242
+
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
+      billing_details: { email: el('checkoutEmail').value }
+    });
+
+    if (error) { el('cardError').textContent = error.message; btn.innerHTML='💳 Pay Now'; btn.disabled=false; return; }
+
+    // Save order to Firestore
+    await db.collection('orders').add({
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      productId: currentProduct.id,
+      productTitle: currentProduct.title,
+      amount: parseFloat(currentProduct.price),
+      paymentMethodId: paymentMethod.id,
+      status: 'completed',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Grant access to product
+    await db.collection('purchases').doc(`${currentUser.uid}_${currentProduct.id}`).set({
+      userId: currentUser.uid,
+      productId: currentProduct.id,
+      productTitle: currentProduct.title,
+      pdfUrl: currentProduct.pdfUrl,
+      purchasedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Update product sales count
+    await db.collection('products').doc(currentProduct.id).update({
+      sales: firebase.firestore.FieldValue.increment(1)
+    });
+
+    toast('🎉 Purchase successful! Check your library.', 'success');
+    showPage('library');
+  } catch(e) {
+    toast('Payment error: ' + e.message, 'error');
+    el('cardError').textContent = e.message;
+  }
+  btn.innerHTML = '💳 Pay Now'; btn.disabled = false;
+}
+
+// ═══════════════════════════════════
+// LIBRARY
+// ═══════════════════════════════════
+async function loadLibrary() {
+  if (!currentUser || !db) return;
+  try {
+    const snap = await db.collection('purchases').where('userId','==',currentUser.uid).get();
+    const purchases = snap.docs.map(d => d.data());
+    const grid = el('libraryGrid');
+    if (!purchases.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📚</div><p class="empty-text">No purchases yet. <a href="#" onclick="showPage(\'home\')" style="color:var(--accent)">Browse resources →</a></p></div>';
+      return;
+    }
+    grid.innerHTML = purchases.map(p => `
+      <div class="library-card">
+        <div class="library-card-title">${esc(p.productTitle)}</div>
+        <div class="library-card-meta"><span>📄 PDF</span><span>✅ Purchased</span></div>
+        ${p.pdfUrl ? `<a href="${p.pdfUrl}" target="_blank" class="btn btn-green btn-sm">⬇ Download PDF</a>` : '<span style="color:var(--muted);font-size:.8rem;">PDF processing...</span>'}
+      </div>
+    `).join('');
+  } catch(e) { toast('Error loading library', 'error'); }
+}
+
+// ═══════════════════════════════════
+// ADMIN — UPLOAD
+// ═══════════════════════════════════
+let selectedFile = null;
+function handleFileSelect(input) {
+  selectedFile = input.files[0];
+  if (selectedFile) el('uploadFileName').textContent = '📄 ' + selectedFile.name;
+}
+
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragging'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === 'application/pdf') {
+    selectedFile = file;
+    el('uploadFileName').textContent = '📄 ' + file.name;
+  } else { toast('Please drop a PDF file', 'error'); }
+});
+
+async function handleUpload() {
+  const title = v('uploadTitle'), desc = v('uploadDesc'), price = v('uploadPrice'),
+        type = v('uploadType'), features = v('uploadFeatures');
+  if (!title || !price) { toast('Please fill title and price', 'error'); return; }
+  if (!selectedFile) { toast('Please select a PDF file', 'error'); return; }
+
+  const btn = el('uploadBtn');
+  btn.innerHTML = '<span class="spinner"></span> Uploading...';
+  btn.disabled = true;
+
+  try {
+    const filename = `products/${Date.now()}_${selectedFile.name.replace(/\s/g,'_')}`;
+    const ref = storage.ref(filename);
+    const task = ref.put(selectedFile);
+
+    const progressBar = el('uploadProgress');
+    const fill = el('uploadProgressFill');
+    progressBar.style.display = 'block';
+
+    task.on('state_changed', snapshot => {
+      const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      fill.style.width = pct + '%';
+    });
+
+    await task;
+    const pdfUrl = await ref.getDownloadURL();
+
+    await db.collection('products').add({
+      title, description: desc, price: parseFloat(price),
+      type, features, pdfUrl,
+      sales: 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    toast('✅ Product published successfully!', 'success');
+    el('uploadTitle').value=''; el('uploadDesc').value=''; el('uploadPrice').value='';
+    el('uploadFeatures').value=''; el('uploadFileName').textContent='';
+    selectedFile=null; progressBar.style.display='none'; fill.style.width='0';
+    switchAdminTab('products');
+    loadProducts();
+    loadAdminData();
+  } catch(e) {
+    toast('Upload error: ' + e.message, 'error');
+    console.error(e);
+  }
+  btn.innerHTML = '⬆ Upload & Publish'; btn.disabled = false;
+}
+
+// ═══════════════════════════════════
+// ADMIN — DATA
+// ═══════════════════════════════════
+async function loadAdminData() {
+  if (!db) return;
+  try {
+    const [prodSnap, orderSnap] = await Promise.all([
+      db.collection('products').get(),
+      db.collection('orders').orderBy('createdAt','desc').get()
+    ]);
+    const prods = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const orders = orderSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const revenue = orders.reduce((s,o)=>s+(o.amount||0),0);
+
+    el('dashRevenue').textContent = '$' + revenue.toFixed(2);
+    el('dashOrders').textContent = orders.length;
+    el('dashProducts').textContent = prods.length;
+    el('statSales').textContent = orders.length;
+
+    // Recent orders table
+    el('recentOrdersTable').innerHTML = orders.slice(0,5).map(o => `
+      <tr>
+        <td style="color:var(--muted);font-size:.8rem;">${o.userEmail||'—'}</td>
+        <td>${esc(o.productTitle||'')}</td>
+        <td style="color:var(--accent2);font-family:'JetBrains Mono',monospace;">$${(o.amount||0).toFixed(2)}</td>
+        <td style="color:var(--muted);font-size:.8rem;">${o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString() : '—'}</td>
+        <td><span style="color:var(--accent3);font-size:.78rem;">✓ ${o.status||'done'}</span></td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No orders yet</td></tr>';
+
+    // Products table
+    el('adminProductsTable').innerHTML = prods.map(p => `
+      <tr>
+        <td><strong>${esc(p.title)}</strong></td>
+        <td><span class="card-type-badge badge-${p.type}" style="position:static;">${p.type}</span></td>
+        <td style="color:var(--accent2);font-family:'JetBrains Mono',monospace;">$${parseFloat(p.price||0).toFixed(2)}</td>
+        <td>${p.sales||0}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">Delete</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No products yet</td></tr>';
+
+    // All orders
+    el('allOrdersTable').innerHTML = orders.map(o => `
+      <tr>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--muted);">${o.id.substring(0,8)}…</td>
+        <td>${o.userEmail||'—'}</td>
+        <td>${esc(o.productTitle||'')}</td>
+        <td style="color:var(--accent2);font-family:'JetBrains Mono',monospace;">$${(o.amount||0).toFixed(2)}</td>
+        <td style="color:var(--muted);font-size:.8rem;">${o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString() : '—'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No orders yet</td></tr>';
+  } catch(e) { console.error('admin data:', e); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Delete this product? This cannot be undone.')) return;
+  try {
+    await db.collection('products').doc(id).delete();
+    toast('Product deleted', 'success');
+    loadProducts(); loadAdminData();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════
+// AUTH
+// ═══════════════════════════════════
+function switchAuthTab(tab) {
+  el('authLoginForm').style.display = tab==='login'?'block':'none';
+  el('authSignupForm').style.display = tab==='signup'?'block':'none';
+  el('loginTab').classList.toggle('active', tab==='login');
+  el('signupTab').classList.toggle('active', tab==='signup');
+}
+
+async function handleLogin() {
+  try {
+    await auth.signInWithEmailAndPassword(v('loginEmail'), v('loginPassword'));
+    toast('Welcome back!', 'success');
+    showPage('home');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function handleSignup() {
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(v('signupEmail'), v('signupPassword'));
+    await cred.user.updateProfile({ displayName: v('signupName') });
+    toast('Account created!', 'success');
+    showPage('home');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function handleLogout() {
+  await auth.signOut();
+  toast('Logged out', 'info');
+  showPage('home');
+}
+
+// ═══════════════════════════════════
+// ADMIN TABS
+// ═══════════════════════════════════
+function switchAdminTab(tab) {
+  ['dashboard','products','upload','orders'].forEach(t => {
+    el('admin' + t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'block':'none';
+    const s = el('sidebar'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(s) s.classList.toggle('active', t===tab);
+  });
+}
+
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+function el(id) { return document.getElementById(id); }
+function v(id) { return el(id)?.value?.trim() || ''; }
+function esc(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function closeModal() { el('productModal').classList.remove('open'); }
+
+let toastTimer;
+function toast(msg, type='info') {
+  const c = el('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
