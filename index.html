@@ -36,7 +36,7 @@ margin-top:30px;
 padding:0 15px;
 }
 
-/* buttons mobile friendly */
+/* buttons */
 
 button{
 width:100%;
@@ -59,12 +59,14 @@ background:#ff00ff;
 color:white;
 }
 
-/* video mobile */
+/* video */
 
 video{
 width:100%;
+max-width:400px;
 margin-top:20px;
 border-radius:12px;
+box-shadow:0 0 20px rgba(0,0,0,0.4);
 }
 
 /* message */
@@ -72,7 +74,7 @@ border-radius:12px;
 #msg{
 margin-top:15px;
 color:#ffb3b3;
-font-size:16px;
+font-size:15px;
 }
 
 /* footer */
@@ -81,7 +83,7 @@ footer{
 margin-top:40px;
 font-size:12px;
 opacity:0.7;
-padding-bottom:15px;
+padding-bottom:20px;
 }
 
 </style>
@@ -112,11 +114,17 @@ padding-bottom:15px;
 function playVideo(file){
 
 let player = document.getElementById("player");
+let message = document.getElementById("msg");
 
-player.src = file;
+message.innerText = "";
+
+/* important for GitHub pages */
+player.src = "./" + file;
+
+player.load();
 
 player.play().catch(()=>{
-document.getElementById("msg").innerText = "song feeling was not added yet";
+message.innerText = "song feeling was not added yet";
 });
 
 }
